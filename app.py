@@ -183,4 +183,3 @@ st.text_input(
 )
 st.button("Send", on_click=send_message_callback)
 st.markdown("</div>", unsafe_allow_html=True)
-
