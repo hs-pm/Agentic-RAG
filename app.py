@@ -13,10 +13,6 @@ if 'messages' not in st.session_state:
         {"role": "bot", "message": "Hi there! I'm your Institutional Memory Agent. Ask me anything about our ML platform."}
     ]
 
-# No need to explicitly initialize 'user_input' if using form's input directly
-# if 'user_input' not in st.session_state:
-#     st.session_state['user_input'] = ""
-
 # --- Knowledge Base ---
 knowledge_base = {
     "What is our MLOps strategy?": "We focus on automated CI/CD, monitoring, and scalable infrastructure using GCP.",
@@ -26,10 +22,18 @@ knowledge_base = {
     "Why did we move away from LangChain?": "LangChain was opaque. We switched to LlamaIndex for clearer agent debugging.",
 }
 
-# --- CSS Styling (Remains largely the same, but note about fixed input) ---
+# --- CSS Styling ---
 st.markdown("""
     <style>
-        /* This ensures the whole app takes full viewport height and allows flexbox */
+        /* Hide Streamlit's default header and toolbar */
+        [data-testid="stHeader"] {
+            display: none !important;
+        }
+        [data-testid="stToolbar"] {
+            display: none !important;
+        }
+
+        /* Ensure the main app container starts from the very top and covers full height */
         .stApp {
             background-color: #121212;
             color: white;
@@ -37,9 +41,20 @@ st.markdown("""
             overflow: hidden; /* Important: Prevents browser scrollbar */
             display: flex;
             flex-direction: column; /* Stack header, chat, input vertically */
+            padding-top: 0 !important; /* Ensure no top padding on the root app element */
         }
         
-        /* General Streamlit container adjustments */
+        /* Ensure the main content view container starts from the very top */
+        .stAppViewContainer {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+            flex-grow: 1; /* Allow it to take vertical space */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Ensure Streamlit's main content area and block containers have no unwanted padding */
         .main, .block-container {
             padding: 0 !important; /* Remove default Streamlit padding */
             flex-grow: 1; /* Allow content to take available space */
@@ -65,7 +80,6 @@ st.markdown("""
             overflow-y: auto; /* Enables vertical scrolling for messages */
             padding: 1rem 2rem;
             background-color: #1e1e1e;
-            /* Debug: background-color: #555; */
         }
 
         /* Message Styling */
@@ -102,11 +116,9 @@ st.markdown("""
             gap: 1rem; /* Space between input and button */
             flex-shrink: 0; /* Ensures input container doesn't shrink */
             box-shadow: 0 -2px 5px rgba(0,0,0,0.4);
-            /* Debug: background-color: #444; */
         }
 
         /* Streamlit Text Input within the form */
-        /* Target the actual input element more aggressively */
         .stTextInput {
             flex-grow: 1; /* Input takes most of the space */
             margin-bottom: 0 !important; /* Remove default margin */
@@ -147,7 +159,6 @@ st.markdown("""
         }
 
         /* Specific fix for stForm not respecting padding if it's the main content */
-        /* This targets the div that holds the form elements to ensure proper flex layout */
         div.stForm {
             width: 100%;
             margin: 0;
@@ -163,12 +174,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Header ---
-# Using st.container to group the header content and apply the 'header' class
 with st.container():
     st.markdown("<div class='header'>💼 Institutional Memory Agent</div>", unsafe_allow_html=True)
 
-# --- Chat History (using st.empty() for controlled placement) ---
-# This placeholder allows the chat content to occupy the central, scrollable space
+# --- Chat History ---
 chat_display_area = st.empty()
 
 with chat_display_area.container():
@@ -179,24 +188,21 @@ with chat_display_area.container():
     st.markdown("</div>", unsafe_allow_html=True)
 
 # --- Input Area with st.form ---
-# Use st.form for reliable single submission and input clearing
-with st.container(): # Use a container to apply the input-container styling
+with st.container():
     st.markdown("<div class='input-container'>", unsafe_allow_html=True)
     
-    with st.form(key="chat_form", clear_on_submit=True): # clear_on_submit handles input clearing automatically
+    with st.form(key="chat_form", clear_on_submit=True):
         user_question = st.text_input(
             label="Ask a question",
-            placeholder="Type your question here...", # Use placeholder instead of label
-            key="user_question_input", # Unique key for this input
-            label_visibility="collapsed" # Hide the default label
+            placeholder="Type your question here...",
+            key="user_question_input",
+            label_visibility="collapsed"
         )
         submit_button = st.form_submit_button("Send")
 
-        if submit_button and user_question: # Process only if button is clicked AND input is not empty
+        if submit_button and user_question:
             st.session_state['messages'].append({"role": "user", "message": user_question})
             response = knowledge_base.get(user_question, "Sorry, I couldn’t find that. Try asking #ml-platform or check Confluence.")
             st.session_state['messages'].append({"role": "bot", "message": response})
-            # st.experimental_rerun() # This is often used in combination with clear_on_submit=False, but clear_on_submit=True handles the rerun
-                                    # If you remove clear_on_submit=True, you'd add this here.
     
-    st.markdown("</div>", unsafe_allow_html=True) # Close the input-container div
+    st.markdown("</div>", unsafe_allow_html=True)
