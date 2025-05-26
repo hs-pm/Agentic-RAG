@@ -22,6 +22,14 @@ knowledge_base = {
     "Why did we move away from LangChain?": "LangChain was opaque. We switched to LlamaIndex for clearer agent debugging.",
 }
 
+# --- Suggestions Data ---
+SUGGESTIONS = [
+    "What is our MLOps strategy?",
+    "Do we use a feature store?",
+    "Where is the churn model deployed?",
+    "How do we ensure data quality?",
+]
+
 # --- CSS Styling (Aggressive fixes for fixed header/footer and chat scrolling) ---
 st.markdown("""
     <style>
@@ -38,25 +46,23 @@ st.markdown("""
         .stAppViewContainer,
         .stMain,
         .stMainBlockContainer,
-        [data-testid="stVerticalBlock"] /* This is the specific block that holds your content */
+        [data-testid="stVerticalBlock"]
         {
             display: flex !important;
             flex-direction: column !important;
-            flex-grow: 1 !important; /* Make them grow to fill available space */
-            height: 100% !important; /* Ensure they take full height of parent */
-            width: 100% !important; /* Ensure they take full width */
-            padding: 0 !important; /* Zero out all padding */
-            margin: 0 !important; /* Zero out all margin */
-            overflow: hidden !important; /* Prevent scrollbars on these containers */
-            min-height: 0 !important; /* Prevent minimum height from pushing content */
+            flex-grow: 1 !important;
+            height: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+            min-height: 0 !important;
         }
         
-        /* Override any default padding/margin on Streamlit's element containers */
-        /* These wrap each st.markdown, st.chat_message etc. */
         .stElementContainer {
             padding: 0 !important;
             margin: 0 !important;
-            min-height: 0 !important; /* Very important to prevent extra space */
+            min-height: 0 !important;
         }
 
         /* --- Header (Fixed Top Ribbon) --- */
@@ -68,36 +74,34 @@ st.markdown("""
             text-align: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.4);
             flex-shrink: 0;
-            position: fixed; /* Make header fixed */
-            top: 0; /* Position at the very top */
+            position: fixed;
+            top: 0;
             left: 0;
             right: 0;
             width: 100%;
-            z-index: 1000; /* Ensure it stays on top of other content */
+            z-index: 1000;
         }
 
         /* --- Chat History Area (Scrollable Middle Section) --- */
-        /* This padding ensures content doesn't go under fixed header/footer */
         .main .block-container {
-            padding-top: 7rem !important; /* Space for the fixed header (adjust as needed) */
-            padding-bottom: 7rem !important; /* Space for the fixed input (adjust as needed) */
-            overflow-y: auto !important; /* Enable scrolling for the chat history */
-            flex-grow: 1 !important; /* Allow it to take remaining space */
-            /* Ensure the content is centered and has side padding */
-            max-width: 700px; /* Example max width for chat content */
+            /* Adjust padding based on header and input container heights */
+            padding-top: 7rem !important;    /* Space for the fixed header */
+            /* Adjusted padding-bottom to accommodate both input AND suggestions */
+            padding-bottom: 11rem !important; /* Approx 4.5rem for input + 3.5rem for suggestions + 3rem gap */
+            overflow-y: auto !important;
+            flex-grow: 1 !important;
+            max-width: 700px; /* Max width for chat content */
             margin-left: auto;
             margin-right: auto;
             padding-left: 1rem !important;
             padding-right: 1rem !important;
         }
         
-        /* Specific styles for st.chat_message bubbles */
         div.stChatMessage {
-            margin-bottom: 0.5rem; /* Space between messages */
+            margin-bottom: 0.5rem;
         }
 
-        /* Customize st.chat_message appearances */
-        .stChatMessage.st-chat-message-user .stChatMessageContent { /* User message bubble */
+        .stChatMessage.st-chat-message-user .stChatMessageContent {
             background-color: #2e7d32 !important; 
             color: white !important; 
             border-bottom-right-radius: 4px !important; 
@@ -105,10 +109,10 @@ st.markdown("""
             border-top-right-radius: 12px !important;
             border-bottom-left-radius: 12px !important;
             padding: 0.75rem 1rem !important;
-            max-width: 85%; /* Limit width of message bubbles */
-            margin-left: auto; /* Push user messages to the right */
+            max-width: 85%;
+            margin-left: auto;
         }
-        .stChatMessage.st-chat-message-assistant .stChatMessageContent { /* Bot message bubble */
+        .stChatMessage.st-chat-message-assistant .stChatMessageContent {
             background-color: #333 !important; 
             color: white !important; 
             border-top-left-radius: 4px !important; 
@@ -116,31 +120,31 @@ st.markdown("""
             border-bottom-right-radius: 12px !important;
             border-bottom-left-radius: 12px !important;
             padding: 0.75rem 1rem !important;
-            max-width: 85%; /* Limit width of message bubbles */
-            margin-right: auto; /* Push bot messages to the left */
+            max-width: 85%;
+            margin-right: auto;
         }
 
         /* --- st.chat_input (Fixed Bottom Section) --- */
         .stChatInputContainer {
-            background-color: #1a1a1a !important; /* Match your input-container background */
-            padding: 1rem 2rem !important; /* Match your desired padding */
-            border-top: 1px solid #333 !important; /* Match your border */
+            background-color: #1a1a1a !important;
+            padding: 1rem 2rem !important;
+            border-top: 1px solid #333 !important;
             box-shadow: 0 -2px 5px rgba(0,0,0,0.4) !important;
-            position: fixed !important; /* Explicitly fix it */
+            position: fixed !important;
             bottom: 0 !important; /* Anchor to bottom */
             left: 0 !important;
             right: 0 !important;
-            width: 100% !important; /* Full width */
-            z-index: 1000; /* Ensure it stays on top */
-            display: flex; /* Make it a flex container for alignment */
-            align-items: center; /* Vertically align items */
-            gap: 1rem; /* Space between input and button */
+            width: 100% !important;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            /* No bottom-padding here as suggestions are above it in the HTML flow */
         }
         
-        /* Adjust the input field inside st.chat_input */
-        .stChatInputContainer .stTextInput { /* Target the text input wrapper inside chat input */
-            flex-grow: 1; /* Allow input to take remaining space */
-            margin-bottom: 0 !important; /* Remove default margin */
+        .stChatInputContainer .stTextInput {
+            flex-grow: 1;
+            margin-bottom: 0 !important;
         }
         .stChatInputContainer .stTextInput div[data-baseweb="input"] input {
             background-color: #222 !important;
@@ -153,12 +157,10 @@ st.markdown("""
             height: auto !important;
             min-height: 40px;
         }
-        /* Hide the default Streamlit label for text input within chat_input if any */
         .stChatInputContainer .stTextInput label {
             display: none !important;
         }
 
-        /* Adjust the Send button inside st.chat_input */
         .stChatInputContainer .stButton button {
             background-color: #3e8e41 !important;
             color: white !important;
@@ -167,7 +169,7 @@ st.markdown("""
             padding: 0.6rem 1.5rem !important;
             min-width: 80px !important;
             height: 40px !important;
-            display: flex !important; /* Ensure it's flex for centering */
+            display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             transition: background-color 0.2s ease-in-out;
@@ -176,25 +178,105 @@ st.markdown("""
             background-color: #4CAF50 !important;
         }
 
+        /* --- Suggestions Styling --- */
+        .suggestions-container {
+            position: fixed; /* Fix to the viewport */
+            bottom: 6rem; /* Position above the input box (adjust based on input height) */
+            left: 0;
+            right: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center; /* Center the suggestions horizontally */
+            align-items: flex-end; /* Align items to the bottom of this container */
+            flex-wrap: wrap; /* Allow suggestions to wrap to the next line */
+            gap: 0.5rem; /* Space between suggestion buttons */
+            padding: 0.5rem 2rem; /* Padding around the suggestion area */
+            background-color: #1a1a1a; /* Match input container background */
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.4); /* Match input container shadow */
+            z-index: 999; /* Ensure it's above chat history, below fixed input */
+        }
+        .suggestion-button button { /* Target the actual Streamlit button element */
+            background-color: #444 !important; /* Darker gray for suggestions */
+            color: white !important;
+            border: 1px solid #555 !important;
+            border-radius: 15px !important; /* Slightly more rounded corners */
+            padding: 0.4rem 1rem !important; /* Smaller padding for suggestion boxes */
+            font-size: 0.85rem !important; /* Smaller font size */
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            white-space: nowrap; /* Prevent text from wrapping within a suggestion box */
+            flex-shrink: 0; /* Prevent buttons from shrinking if space is tight */
+            height: auto !important; /* Allow height to adjust to content */
+            line-height: 1.2 !important; /* Adjust line height for better spacing */
+        }
+        .suggestion-button button:hover {
+            background-color: #555 !important;
+        }
+        /* Target the specific st.columns wrapper to remove its default padding/margin */
+        .stColumns {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            gap: 0.5rem !important; /* Consistent gap between columns */
+            justify-content: center; /* Center column content */
+        }
+        /* Target the individual columns within st.columns */
+        .stColumn {
+            padding: 0 !important;
+            margin: 0 !important;
+            flex-grow: 0 !important; /* Do not grow */
+            flex-basis: auto !important; /* Auto size based on content */
+            min-width: 0 !important;
+        }
+
     </style>
 """, unsafe_allow_html=True)
 
-# --- Header (Now placed as a custom fixed element) ---
+# --- Header ---
 st.markdown("<div class='header'>💼 Institutional Memory Agent</div>", unsafe_allow_html=True)
 
+# --- Define the function to handle suggestion clicks ---
+def handle_suggestion_click(suggestion_text):
+    # This function will add the suggestion as a user message
+    # and trigger a bot response, then rerun the app.
+    st.session_state['messages'].append({"role": "user", "content": suggestion_text})
+    response = knowledge_base.get(suggestion_text, "Sorry, I couldn’t find that. Try asking #ml-platform or check Confluence.")
+    st.session_state['messages'].append({"role": "assistant", "content": response})
+    st.rerun() # Rerun the app to update chat history and clear input
+
+
 # --- Display Chat Messages ---
-# Use st.container to ensure messages are rendered within a predictable block,
-# which the CSS for .main .block-container controls for scrolling.
-# We don't need a separate 'chat' div here because .main .block-container handles the overflow.
+# This loop displays all messages currently in session_state
 for msg in st.session_state['messages']:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
+
+# --- Suggestions Area (Rendered BEFORE st.chat_input) ---
+# This container will hold the suggestions, positioned above the chat input via CSS
+st.markdown("<div class='suggestions-container'>", unsafe_allow_html=True)
+# Create columns to lay out the suggestion buttons horizontally
+cols = st.columns(len(SUGGESTIONS))
+for i, suggestion in enumerate(SUGGESTIONS):
+    with cols[i]:
+        # Create a button for each suggestion
+        # use_container_width=False prevents button from stretching across the entire column
+        # A unique key is important for each button
+        st.button(
+            suggestion, 
+            on_click=handle_suggestion_click, 
+            args=(suggestion,), 
+            key=f"suggestion_btn_{i}", 
+            help=suggestion, 
+            use_container_width=False
+        )
+st.markdown("</div>", unsafe_allow_html=True)
+
 
 # --- Chat Input (Fixed at Bottom - Streamlit Native) ---
 # This is placed at the very end of the script to ensure it renders at the bottom.
 user_query = st.chat_input("Ask a question...")
 
-if user_query:
+if user_query: # This block executes when the user types and submits a message
     # Add user message to history
     st.session_state['messages'].append({"role": "user", "content": user_query})
     
@@ -202,5 +284,4 @@ if user_query:
     response = knowledge_base.get(user_query, "Sorry, I couldn’t find that. Try asking #ml-platform or check Confluence.")
     st.session_state['messages'].append({"role": "assistant", "content": response})
     
-    # Rerun the app to show the new messages. st.chat_input handles input clearing.
-    st.rerun()
+    st.rerun() # Rerun the app to show the new messages and clear the input
