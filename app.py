@@ -13,8 +13,9 @@ if 'messages' not in st.session_state:
         {"role": "bot", "message": "Hi there! I'm your Institutional Memory Agent. Ask me anything about our ML platform."}
     ]
 
-if 'user_input' not in st.session_state:
-    st.session_state['user_input'] = ""
+# No need to explicitly initialize 'user_input' if using form's input directly
+# if 'user_input' not in st.session_state:
+#     st.session_state['user_input'] = ""
 
 # --- Knowledge Base ---
 knowledge_base = {
@@ -25,17 +26,29 @@ knowledge_base = {
     "Why did we move away from LangChain?": "LangChain was opaque. We switched to LlamaIndex for clearer agent debugging.",
 }
 
-# --- CSS Styling ---
+# --- CSS Styling (Remains largely the same, but note about fixed input) ---
 st.markdown("""
     <style>
+        /* This ensures the whole app takes full viewport height and allows flexbox */
         .stApp {
             background-color: #121212;
             color: white;
             height: 100vh;
-            overflow: hidden;
+            overflow: hidden; /* Important: Prevents browser scrollbar */
+            display: flex;
+            flex-direction: column; /* Stack header, chat, input vertically */
+        }
+        
+        /* General Streamlit container adjustments */
+        .main, .block-container {
+            padding: 0 !important; /* Remove default Streamlit padding */
+            flex-grow: 1; /* Allow content to take available space */
             display: flex;
             flex-direction: column;
+            overflow: hidden; /* Crucial to prevent extra scrollbars */
         }
+
+        /* Header (Top Ribbon) */
         .header {
             background-color: #1a1a1a;
             padding: 1rem 2rem;
@@ -43,81 +56,147 @@ st.markdown("""
             font-weight: bold;
             text-align: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-            flex-shrink: 0;
+            flex-shrink: 0; /* Ensures header doesn't shrink */
         }
+
+        /* Chat History Area (Scrollable Middle Section) */
         .chat {
-            flex-grow: 1;
-            overflow-y: auto;
+            flex-grow: 1; /* Takes all available space between header and input */
+            overflow-y: auto; /* Enables vertical scrolling for messages */
             padding: 1rem 2rem;
             background-color: #1e1e1e;
+            /* Debug: background-color: #555; */
         }
+
+        /* Message Styling */
         .message {
             padding: 0.75rem 1rem;
             border-radius: 12px;
             margin-bottom: 0.5rem;
             max-width: 85%;
             line-height: 1.5;
+            word-wrap: break-word; /* Ensure long words break */
         }
-        .user { background-color: #2e7d32; color: white; margin-left: auto; text-align: right; }
-        .bot { background-color: #333; color: white; margin-right: auto; text-align: left; }
+        .user { 
+            background-color: #2e7d32; 
+            color: white; 
+            margin-left: auto; 
+            text-align: right; 
+            border-bottom-right-radius: 4px; /* Gemini-like tail */
+        }
+        .bot { 
+            background-color: #333; 
+            color: white; 
+            margin-right: auto; 
+            text-align: left; 
+            border-top-left-radius: 4px; /* Gemini-like tail */
+        }
+
+        /* Input Container (Bottom Fixed Section) */
         .input-container {
             background-color: #1a1a1a;
             padding: 1rem 2rem;
             border-top: 1px solid #333;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-shrink: 0;
+            display: flex; /* Use flexbox for input and button alignment */
+            align-items: center; /* Vertically align items */
+            gap: 1rem; /* Space between input and button */
+            flex-shrink: 0; /* Ensures input container doesn't shrink */
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.4);
+            /* Debug: background-color: #444; */
         }
-        input[type="text"] {
-            background-color: #222;
-            color: white;
-            border: 1px solid #444;
-            border-radius: 20px;
-            padding: 0.6rem 1rem;
-            flex-grow: 1;
+
+        /* Streamlit Text Input within the form */
+        /* Target the actual input element more aggressively */
+        .stTextInput {
+            flex-grow: 1; /* Input takes most of the space */
+            margin-bottom: 0 !important; /* Remove default margin */
         }
-        button {
+        .stTextInput div[data-baseweb="input"] input {
+            background-color: #222 !important;
+            color: white !important;
+            border: 1px solid #444 !important;
+            border-radius: 20px !important;
+            padding: 0.6rem 1rem !important;
+            font-size: 1rem;
+            line-height: 1.5;
+            height: auto !important; /* Allow height to adjust if multiline */
+            min-height: 40px; /* Minimum height */
+        }
+        /* Hide the default Streamlit label for text input */
+        .stTextInput label {
+            display: none !important;
+        }
+
+        /* Streamlit Button within the form */
+        .stButton button {
             background-color: #3e8e41;
             color: white;
             border: none;
             border-radius: 20px;
             padding: 0.6rem 1.5rem;
             cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            min-width: 80px; /* Ensure button has a decent width */
+            height: 40px; /* Match input min-height */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        button:hover {
+        .stButton button:hover {
             background-color: #4CAF50;
+        }
+
+        /* Specific fix for stForm not respecting padding if it's the main content */
+        /* This targets the div that holds the form elements to ensure proper flex layout */
+        div.stForm {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        div.stForm > div { /* This is the internal flex container for form elements */
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            width: 100%; /* Ensure it spans full width */
         }
     </style>
 """, unsafe_allow_html=True)
 
 # --- Header ---
-st.markdown("<div class='header'>💼 Institutional Memory Agent</div>", unsafe_allow_html=True)
+# Using st.container to group the header content and apply the 'header' class
+with st.container():
+    st.markdown("<div class='header'>💼 Institutional Memory Agent</div>", unsafe_allow_html=True)
 
-# --- Chat History ---
-st.markdown("<div class='chat'>", unsafe_allow_html=True)
-for msg in st.session_state['messages']:
-    css_class = "user" if msg['role'] == 'user' else "bot"
-    st.markdown(f"<div class='message {css_class}'>{msg['message']}</div>", unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
+# --- Chat History (using st.empty() for controlled placement) ---
+# This placeholder allows the chat content to occupy the central, scrollable space
+chat_display_area = st.empty()
 
-# --- Message Sending Logic ---
-def handle_message():
-    user_text = st.session_state.user_input.strip()
-    if user_text:
-        st.session_state['messages'].append({"role": "user", "message": user_text})
-        response = knowledge_base.get(user_text, "Sorry, I couldn’t find that. Try asking #ml-platform or check Confluence.")
-        st.session_state['messages'].append({"role": "bot", "message": response})
-        st.session_state.user_input = ""
+with chat_display_area.container():
+    st.markdown("<div class='chat'>", unsafe_allow_html=True)
+    for msg in st.session_state['messages']:
+        css_class = "user" if msg['role'] == 'user' else "bot"
+        st.markdown(f"<div class='message {css_class}'>{msg['message']}</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# --- Input Area ---
-st.markdown("<div class='input-container'>", unsafe_allow_html=True)
-st.text_input(
-    label="Ask a question",
-    value=st.session_state.user_input,
-    key="user_input",
-    label_visibility="collapsed",
-    on_change=handle_message
-)
-st.button("Send", on_click=handle_message)
-st.markdown("</div>", unsafe_allow_html=True)
+# --- Input Area with st.form ---
+# Use st.form for reliable single submission and input clearing
+with st.container(): # Use a container to apply the input-container styling
+    st.markdown("<div class='input-container'>", unsafe_allow_html=True)
+    
+    with st.form(key="chat_form", clear_on_submit=True): # clear_on_submit handles input clearing automatically
+        user_question = st.text_input(
+            label="Ask a question",
+            placeholder="Type your question here...", # Use placeholder instead of label
+            key="user_question_input", # Unique key for this input
+            label_visibility="collapsed" # Hide the default label
+        )
+        submit_button = st.form_submit_button("Send")
+
+        if submit_button and user_question: # Process only if button is clicked AND input is not empty
+            st.session_state['messages'].append({"role": "user", "message": user_question})
+            response = knowledge_base.get(user_question, "Sorry, I couldn’t find that. Try asking #ml-platform or check Confluence.")
+            st.session_state['messages'].append({"role": "bot", "message": response})
+            # st.experimental_rerun() # This is often used in combination with clear_on_submit=False, but clear_on_submit=True handles the rerun
+                                    # If you remove clear_on_submit=True, you'd add this here.
+    
+    st.markdown("</div>", unsafe_allow_html=True) # Close the input-container div
