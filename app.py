@@ -4,13 +4,13 @@ import streamlit as st
 st.set_page_config(
     page_title="Institutional Memory Agent 💬",
     page_icon="💼",
-    layout="wide"
+    layout="wide" # Using wide layout
 )
 
 # --- Session State Initialization ---
 if 'messages' not in st.session_state:
     st.session_state['messages'] = [
-        {"role": "bot", "message": "Hi there! I'm your Institutional Memory Agent. Ask me anything about our ML platform."}
+        {"role": "assistant", "content": "Hi there! I'm your Institutional Memory Agent. Ask me anything about our ML platform."}
     ]
 
 # --- Knowledge Base ---
@@ -22,7 +22,7 @@ knowledge_base = {
     "Why did we move away from LangChain?": "LangChain was opaque. We switched to LlamaIndex for clearer agent debugging.",
 }
 
-# --- CSS Styling (Aggressive fixes for fixed footer) ---
+# --- CSS Styling (Aggressive fixes for fixed header/footer and chat scrolling) ---
 st.markdown("""
     <style>
         /* Hide Streamlit's default header and toolbar */
@@ -33,8 +33,7 @@ st.markdown("""
             display: none !important;
         }
 
-        /* Crucial: Ensure all core Streamlit containers are flex columns and fill space */
-        /* This targets every major wrapper div that Streamlit creates */
+        /* Crucial: Ensure the main app and its containers are flex columns and fill space */
         .stApp,
         .stAppViewContainer,
         .stMain,
@@ -53,14 +52,14 @@ st.markdown("""
         }
         
         /* Override any default padding/margin on Streamlit's element containers */
-        /* These wrap each st.markdown, st.text_input etc. */
+        /* These wrap each st.markdown, st.chat_message etc. */
         .stElementContainer {
             padding: 0 !important;
             margin: 0 !important;
             min-height: 0 !important; /* Very important to prevent extra space */
         }
 
-        /* Header (Top Ribbon) */
+        /* --- Header (Fixed Top Ribbon) --- */
         .header {
             background-color: #1a1a1a;
             padding: 1rem 2rem;
@@ -68,59 +67,82 @@ st.markdown("""
             font-weight: bold;
             text-align: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-            flex-shrink: 0; /* Ensures header doesn't shrink */
+            flex-shrink: 0;
+            position: fixed; /* Make header fixed */
+            top: 0; /* Position at the very top */
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 1000; /* Ensure it stays on top of other content */
         }
 
-        /* Chat History Area (Scrollable Middle Section) */
-        .chat {
-            flex-grow: 1; /* Takes all available space between header and input */
-            overflow-y: auto; /* Enables vertical scrolling for messages */
-            padding: 1rem 2rem; /* Internal padding for chat bubbles */
-            background-color: #1e1e1e;
+        /* --- Chat History Area (Scrollable Middle Section) --- */
+        /* This padding ensures content doesn't go under fixed header/footer */
+        .main .block-container {
+            padding-top: 7rem !important; /* Space for the fixed header (adjust as needed) */
+            padding-bottom: 7rem !important; /* Space for the fixed input (adjust as needed) */
+            overflow-y: auto !important; /* Enable scrolling for the chat history */
+            flex-grow: 1 !important; /* Allow it to take remaining space */
+            /* Ensure the content is centered and has side padding */
+            max-width: 700px; /* Example max width for chat content */
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+        
+        /* Specific styles for st.chat_message bubbles */
+        div.stChatMessage {
+            margin-bottom: 0.5rem; /* Space between messages */
         }
 
-        /* Message Styling */
-        .message {
-            padding: 0.75rem 1rem;
-            border-radius: 12px;
-            margin-bottom: 0.5rem;
-            max-width: 85%;
-            line-height: 1.5;
-            word-wrap: break-word;
+        /* Customize st.chat_message appearances */
+        .stChatMessage.st-chat-message-user .stChatMessageContent { /* User message bubble */
+            background-color: #2e7d32 !important; 
+            color: white !important; 
+            border-bottom-right-radius: 4px !important; 
+            border-top-left-radius: 12px !important;
+            border-top-right-radius: 12px !important;
+            border-bottom-left-radius: 12px !important;
+            padding: 0.75rem 1rem !important;
+            max-width: 85%; /* Limit width of message bubbles */
+            margin-left: auto; /* Push user messages to the right */
         }
-        .user { 
-            background-color: #2e7d32; 
-            color: white; 
-            margin-left: auto; 
-            text-align: right; 
-            border-bottom-right-radius: 4px;
-        }
-        .bot { 
-            background-color: #333; 
-            color: white; 
-            margin-right: auto; 
-            text-align: left; 
-            border-top-left-radius: 4px;
-        }
-
-        /* Input Container (Bottom Fixed Section) */
-        .input-container {
-            background-color: #1a1a1a;
-            padding: 1rem 2rem;
-            border-top: 1px solid #333;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-shrink: 0; /* Ensures input container doesn't shrink */
-            box-shadow: 0 -2px 5px rgba(0,0,0,0.4);
+        .stChatMessage.st-chat-message-assistant .stChatMessageContent { /* Bot message bubble */
+            background-color: #333 !important; 
+            color: white !important; 
+            border-top-left-radius: 4px !important; 
+            border-top-right-radius: 12px !important;
+            border-bottom-right-radius: 12px !important;
+            border-bottom-left-radius: 12px !important;
+            padding: 0.75rem 1rem !important;
+            max-width: 85%; /* Limit width of message bubbles */
+            margin-right: auto; /* Push bot messages to the left */
         }
 
-        /* Streamlit Text Input within the form */
-        .stTextInput {
-            flex-grow: 1;
-            margin-bottom: 0 !important;
+        /* --- st.chat_input (Fixed Bottom Section) --- */
+        .stChatInputContainer {
+            background-color: #1a1a1a !important; /* Match your input-container background */
+            padding: 1rem 2rem !important; /* Match your desired padding */
+            border-top: 1px solid #333 !important; /* Match your border */
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.4) !important;
+            position: fixed !important; /* Explicitly fix it */
+            bottom: 0 !important; /* Anchor to bottom */
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important; /* Full width */
+            z-index: 1000; /* Ensure it stays on top */
+            display: flex; /* Make it a flex container for alignment */
+            align-items: center; /* Vertically align items */
+            gap: 1rem; /* Space between input and button */
         }
-        .stTextInput div[data-baseweb="input"] input {
+        
+        /* Adjust the input field inside st.chat_input */
+        .stChatInputContainer .stTextInput { /* Target the text input wrapper inside chat input */
+            flex-grow: 1; /* Allow input to take remaining space */
+            margin-bottom: 0 !important; /* Remove default margin */
+        }
+        .stChatInputContainer .stTextInput div[data-baseweb="input"] input {
             background-color: #222 !important;
             color: white !important;
             border: 1px solid #444 !important;
@@ -131,79 +153,54 @@ st.markdown("""
             height: auto !important;
             min-height: 40px;
         }
-        .stTextInput label {
+        /* Hide the default Streamlit label for text input within chat_input if any */
+        .stChatInputContainer .stTextInput label {
             display: none !important;
         }
 
-        /* Streamlit Button within the form */
-        .stButton button {
-            background-color: #3e8e41;
-            color: white;
-            border: none;
-            border-radius: 20px;
-            padding: 0.6rem 1.5rem;
-            cursor: pointer;
+        /* Adjust the Send button inside st.chat_input */
+        .stChatInputContainer .stButton button {
+            background-color: #3e8e41 !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 20px !important;
+            padding: 0.6rem 1.5rem !important;
+            min-width: 80px !important;
+            height: 40px !important;
+            display: flex !important; /* Ensure it's flex for centering */
+            align-items: center !important;
+            justify-content: center !important;
             transition: background-color 0.2s ease-in-out;
-            min-width: 80px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
-        .stButton button:hover {
-            background-color: #4CAF50;
+        .stChatInputContainer .stButton button:hover {
+            background-color: #4CAF50 !important;
         }
 
-        /* Specific fix for stForm not respecting flex alignment in some cases */
-        div.stForm {
-            width: 100%;
-            margin: 0;
-            padding: 0;
-        }
-        div.stForm > div {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-        }
     </style>
 """, unsafe_allow_html=True)
 
-# --- Header ---
-with st.container():
-    st.markdown("<div class='header'>💼 Institutional Memory Agent</div>", unsafe_allow_html=True)
+# --- Header (Now placed as a custom fixed element) ---
+st.markdown("<div class='header'>💼 Institutional Memory Agent</div>", unsafe_allow_html=True)
 
-# --- Chat History ---
-# Using st.empty() for controlled placement within the flex layout
-chat_display_area = st.empty()
+# --- Display Chat Messages ---
+# Use st.container to ensure messages are rendered within a predictable block,
+# which the CSS for .main .block-container controls for scrolling.
+# We don't need a separate 'chat' div here because .main .block-container handles the overflow.
+for msg in st.session_state['messages']:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
 
-with chat_display_area.container():
-    st.markdown("<div class='chat'>", unsafe_allow_html=True)
-    for msg in st.session_state['messages']:
-        css_class = "user" if msg['role'] == 'user' else "bot"
-        st.markdown(f"<div class='message {css_class}'>{msg['message']}</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+# --- Chat Input (Fixed at Bottom - Streamlit Native) ---
+# This is placed at the very end of the script to ensure it renders at the bottom.
+user_query = st.chat_input("Ask a question...")
 
-# --- Input Area with st.form ---
-# This container applies the background and padding for the fixed input area
-with st.container():
-    st.markdown("<div class='input-container'>", unsafe_allow_html=True)
+if user_query:
+    # Add user message to history
+    st.session_state['messages'].append({"role": "user", "content": user_query})
     
-    # st.form ensures reliable single submission and auto-clearing
-    with st.form(key="chat_form", clear_on_submit=True):
-        user_question = st.text_input(
-            label="Ask a question", # Label for internal use, hidden by CSS
-            placeholder="Type your question here...",
-            key="user_question_input",
-            label_visibility="collapsed" # Hides the default label
-        )
-        submit_button = st.form_submit_button("Send")
-
-        if submit_button and user_question: # Only process if button clicked and input is not empty
-            st.session_state['messages'].append({"role": "user", "message": user_question})
-            response = knowledge_base.get(user_question, "Sorry, I couldn’t find that. Try asking #ml-platform or check Confluence.")
-            st.session_state['messages'].append({"role": "bot", "message": response})
+    # Get bot response
+    response = knowledge_base.get(user_query, "Sorry, I couldn’t find that. Try asking #ml-platform or check Confluence.")
+    st.session_state['messages'].append({"role": "assistant", "content": response})
     
-    st.markdown("</div>", unsafe_allow_html=True) # Close the input-container div
+    # Rerun the app to show the new messages. st.chat_input handles input clearing.
+    st.rerun()
